@@ -720,14 +720,14 @@ void HelloVulkan::createSpheres(uint32_t nbSpheres)
   std::vector<MaterialObj> materials;
   std::vector<int>         matIdx(nbSpheres);
   materials.emplace_back(mat);
-  mat.diffuse = nvmath::vec3f(1, 1, 0);
-  materials.emplace_back(mat);
+  /*mat.diffuse = nvmath::vec3f(1, 1, 0);
+  materials.emplace_back(mat);*/
 
-  // Assign a material to each sphere
-  for(size_t i = 0; i < m_spheres.size(); i++)
-  {
-    matIdx[i] = i % 2;
-  }
+  //// Assign a material to each sphere
+  //for(size_t i = 0; i < m_spheres.size(); i++)
+  //{
+  //  matIdx[i] = i % 2;
+  //}
 
   // Creating all buffers
   using vkBU = VkBufferUsageFlagBits;

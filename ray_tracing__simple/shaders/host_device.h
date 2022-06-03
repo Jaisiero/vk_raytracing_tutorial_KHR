@@ -43,7 +43,8 @@ using uint = unsigned int;
 START_BINDING(SceneBindings)
   eGlobals  = 0,  // Global uniform containing camera matrices
   eObjDescs = 1,  // Access to the object descriptions
-  eTextures = 2   // Access to textures
+  eTextures = 2,   // Access to textures
+  eImplicit = 3   // All implicit objects
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -111,6 +112,18 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
   float dissolve;  // 1 == opaque; 0 == fully transparent
   int   illum;     // illumination model (see http://www.fileformat.info/format/material/)
   int   textureId;
+};
+
+struct Voxel
+{
+  vec3  center;
+  float side;
+};
+
+struct Aabb
+{
+  vec3 minimum;
+  vec3 maximum;
 };
 
 

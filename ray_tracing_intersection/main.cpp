@@ -161,7 +161,7 @@ int main(int argc, char** argv)
   // Creation of the example
   //  helloVk.loadModel(nvh::findFile("media/scenes/Medieval_building.obj", defaultSearchPaths, true));
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
-  helloVk.createSpheres(2000000);
+  helloVk.createSpheres(200000);
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();

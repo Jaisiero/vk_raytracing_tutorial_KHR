@@ -126,6 +126,8 @@ public:
   // #VKRay
   void initRayTracing();
   auto objectToVkGeometryKHR(const ObjModel& model);
+  auto voxelsToVkGeometryKHR();
+  void createVoxels(uint32_t nbVoxels);
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();
@@ -153,4 +155,10 @@ public:
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  std::vector<Voxel> m_voxels;                // All voxels
+  nvvk::Buffer        m_voxelsBuffer;          // Buffer holding the voxels
+  nvvk::Buffer        m_voxelsAabbBuffer;      // Buffer of all Aabb
+  nvvk::Buffer        m_voxelsMatColorBuffer;  // Multiple materials
+  nvvk::Buffer        m_voxelsMatIndexBuffer;  // Define which voxel uses which material
 };

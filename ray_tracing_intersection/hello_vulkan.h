@@ -28,6 +28,7 @@
 
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
+//#include "octree.h"
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -163,4 +164,12 @@ public:
 
   void createSpheres(uint32_t nbSpheres);
   auto sphereToVkGeometryKHR();
+
+  // Octree stuff
+  /*WorldOctree world;
+
+  class DMCChunk* dmc_chunk;
+
+  std::mutex gl_mutex;
+  clock_t    last_extraction;*/
 };
