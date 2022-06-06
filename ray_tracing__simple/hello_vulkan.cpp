@@ -699,6 +699,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
     Voxel s;
     s.center     = nvmath::vec3f(xzd(gen), yd(gen), xzd(gen));
     s.side      = side;
+    s.level  = 1;
     m_voxels[i] = std::move(s);
   }
 

@@ -117,7 +117,8 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
 struct Voxel
 {
   vec3  center;
-  float side;
+  float        side;
+  uint  level;
 };
 
 struct Aabb

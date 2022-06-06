@@ -28,9 +28,9 @@
 #include "wavefront.glsl"
 
 
-layout(set = 1, binding = eImplicit, scalar) buffer allSpheres_
+layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_
 {
-  Sphere allSpheres[];
+  Voxel allVoxels[];
 };
 
 
@@ -40,24 +40,24 @@ struct Ray
   vec3 direction;
 };
 
-// Ray-Sphere intersection
-// http://viclw17.github.io/2018/07/16/raytracing-ray-sphere-intersection/
-float hitSphere(const Sphere s, const Ray r)
-{
-  vec3  oc           = r.origin - s.center;
-  float a            = dot(r.direction, r.direction);
-  float b            = 2.0 * dot(oc, r.direction);
-  float c            = dot(oc, oc) - s.radius * s.radius;
-  float discriminant = b * b - 4 * a * c;
-  if(discriminant < 0)
-  {
-    return -1.0;
-  }
-  else
-  {
-    return (-b - sqrt(discriminant)) / (2.0 * a);
-  }
-}
+// Ray-Voxel intersection
+// http://viclw17.github.io/2018/07/16/raytracing-ray-voxel-intersection/
+//float hitVoxel(const Voxel s, const Ray r)
+//{
+//  vec3  oc           = r.origin - s.center;
+//  float a            = dot(r.direction, r.direction);
+//  float b            = 2.0 * dot(oc, r.direction);
+//  float c            = dot(oc, oc) - s.side * s.side;
+//  float discriminant = b * b - 4 * a * c;
+//  if(discriminant < 0)
+//  {
+//    return -1.0;
+//  }
+//  else
+//  {
+//    return (-b - sqrt(discriminant)) / (2.0 * a);
+//  }
+//}
 
 // Ray-AABB intersection
 float hitAabb(const Aabb aabb, const Ray r)
@@ -78,26 +78,27 @@ void main()
   ray.origin    = gl_WorldRayOriginEXT;
   ray.direction = gl_WorldRayDirectionEXT;
 
-  // Sphere data
-  Sphere sphere = allSpheres[gl_PrimitiveID];
+  // Voxel data
+  Voxel voxel = allVoxels[gl_PrimitiveID];
 
-  float tHit    = -1;
-  int   hitKind = gl_PrimitiveID % 2 == 0 ? KIND_SPHERE : KIND_CUBE;
-  if(hitKind == KIND_SPHERE)
-  {
-    // Sphere intersection
-    tHit = hitSphere(sphere, ray);
-  }
-  else
-  {
-    // AABB intersection
-    Aabb aabb;
-    aabb.minimum = sphere.center - vec3(sphere.radius);
-    aabb.maximum = sphere.center + vec3(sphere.radius);
-    tHit         = hitAabb(aabb, ray);
-  }
+	float tHit    = -1;
+	int   hitKind = 1;
+	//int   hitKind = gl_PrimitiveID % 2 == 0 ? KIND_SPHERE : KIND_CUBE;
+	//if(hitKind == KIND_SPHERE)
+	//{
+	//  // Voxel intersection
+	//  tHit = hitVoxel(voxel, ray);
+	//}
+	//else
+	{
+	// AABB intersection
+	Aabb aabb;
+	aabb.minimum = voxel.center - vec3(voxel.side);
+	aabb.maximum = voxel.center + vec3(voxel.side);
+	tHit         = hitAabb(aabb, ray);
+	}
 
-  // Report hit point
-  if(tHit > 0)
-    reportIntersectionEXT(tHit, hitKind);
+	// Report hit point
+	if(tHit > 0)
+	reportIntersectionEXT(tHit, hitKind);
 }
