@@ -32,6 +32,12 @@ layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_
 {
   Voxel allVoxels[];
 };
+layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
+
+//layout(set = 1, binding = eWorldProp, scalar) buffer allWorldProperties_
+//{
+  //float maxDistance;
+//};
 
 
 struct Ray
@@ -59,6 +65,17 @@ struct Ray
 //  }
 //}
 
+bool isTooFar(const Aabb aabb, const Ray r) 
+{
+  // distance > maxDistance?
+  float distanceMin = sqrt(pow(aabb.minimum.x - r.origin.x, 2) + pow(aabb.minimum.y - r.origin.y, 2) + pow(aabb.minimum.z - r.origin.z, 2));
+  float distanceMax = sqrt(pow(aabb.minimum.x - r.origin.x, 2) + pow(aabb.minimum.y - r.origin.y, 2) + pow(aabb.minimum.z - r.origin.z, 2));
+  if(distanceMin > pcRay.maxDistance && distanceMax > pcRay.maxDistance)
+    return true;
+  else
+    return false;
+}
+
 // Ray-AABB intersection
 float hitAabb(const Aabb aabb, const Ray r)
 {
@@ -67,6 +84,7 @@ float hitAabb(const Aabb aabb, const Ray r)
   vec3  ttop   = invDir * (aabb.maximum - r.origin);
   vec3  tmin   = min(ttop, tbot);
   vec3  tmax   = max(ttop, tbot);
+
   float t0     = max(tmin.x, max(tmin.y, tmin.z));
   float t1     = min(tmax.x, min(tmax.y, tmax.z));
   return t1 > max(t0, 0.0) ? t0 : -1.0;
@@ -81,24 +99,27 @@ void main()
   // Voxel data
   Voxel voxel = allVoxels[gl_PrimitiveID];
 
-	float tHit    = -1;
-	int   hitKind = 1;
-	//int   hitKind = gl_PrimitiveID % 2 == 0 ? KIND_SPHERE : KIND_CUBE;
-	//if(hitKind == KIND_SPHERE)
-	//{
-	//  // Voxel intersection
-	//  tHit = hitVoxel(voxel, ray);
-	//}
-	//else
-	{
-	// AABB intersection
-	Aabb aabb;
-	aabb.minimum = voxel.center - vec3(voxel.side);
-	aabb.maximum = voxel.center + vec3(voxel.side);
-	tHit         = hitAabb(aabb, ray);
-	}
+    float tHit    = -1;
+    int   hitKind = 1;
+    //int   hitKind = gl_PrimitiveID % 2 == 0 ? KIND_SPHERE : KIND_CUBE;
+    //if(hitKind == KIND_SPHERE)
+    //{
+    //  // Voxel intersection
+    //  tHit = hitVoxel(voxel, ray);
+    //}
+    //else
+    {
+        // AABB intersection
+        Aabb aabb;
+        aabb.minimum = voxel.center - vec3(voxel.side);
+        aabb.maximum = voxel.center + vec3(voxel.side);
+        if(!isTooFar(aabb, ray))
+            tHit         = hitAabb(aabb, ray);
+        else
+            tHit         = -1.0;
+    }
 
-	// Report hit point
-	if(tHit > 0)
-	reportIntersectionEXT(tHit, hitKind);
+    // Report hit point
+    if(tHit > 0)
+        reportIntersectionEXT(tHit, hitKind);
 }

@@ -44,7 +44,8 @@ START_BINDING(SceneBindings)
   eGlobals  = 0,  // Global uniform containing camera matrices
   eObjDescs = 1,  // Access to the object descriptions
   eTextures = 2,   // Access to textures
-  eImplicit = 3   // All implicit objects
+  eImplicit = 3/*,   // All implicit objects
+  eWorldProp = 4   // All global world properties*/
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -90,6 +91,7 @@ struct PushConstantRay
   vec3  lightPosition;
   float lightIntensity;
   int   lightType;
+  float maxDistance;
 };
 
 struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device

@@ -115,8 +115,11 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
   // Implicit geometries
-  m_descSetLayoutBind.addBinding(eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  m_descSetLayoutBind.addBinding(SceneBindings::eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
                                  VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
+  //// Global world properties
+  //m_descSetLayoutBind.addBinding(SceneBindings::eWorldProp, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -147,7 +150,10 @@ void HelloVulkan::updateDescriptorSet()
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
 
   VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicit, &dbiVoxels));
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicit, &dbiVoxels));
+
+  //VkDescriptorBufferInfo dbiWorldProp{m_worldBuffer.buffer, 0, VK_WHOLE_SIZE};
+  //writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eWorldProp, &dbiWorldProp));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -1088,6 +1094,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const nvmath::vec4f& c
   m_pcRay.lightPosition  = m_pcRaster.lightPosition;
   m_pcRay.lightIntensity = m_pcRaster.lightIntensity;
   m_pcRay.lightType      = m_pcRaster.lightType;
+  m_pcRay.maxDistance    = 50;
 
   std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
