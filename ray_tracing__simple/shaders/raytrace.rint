@@ -113,10 +113,11 @@ void main()
         Aabb aabb;
         aabb.minimum = voxel.center - vec3(voxel.side);
         aabb.maximum = voxel.center + vec3(voxel.side);
-        if(!isTooFar(aabb, ray))
+        if(!isTooFar(aabb, ray)) {
             tHit         = hitAabb(aabb, ray);
-        else
+        } else {
             tHit         = -1.0;
+        }
     }
 
     // Report hit point

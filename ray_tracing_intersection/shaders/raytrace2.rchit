@@ -26,6 +26,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
 
+//#extension GL_EXT_debug_printf : require
+
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
@@ -51,6 +53,9 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 
 void main()
 {
+
+  //debugPrintfEXT("Hello from invocation (%d, %d)!\n", gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+
   // Object data
   ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
   MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
