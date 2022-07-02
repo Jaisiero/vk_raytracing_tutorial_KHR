@@ -29,20 +29,22 @@
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
-hitAttributeEXT vec2 attribs;
+//hitAttributeEXT vec2 attribs;
+hitAttributeEXT bool _isHit;
 
 // clang-format off
 layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT bool isShadowed;
+//layout(location = 1) rayPayloadEXT shadowPayload prdShadow;
 
-layout(buffer_reference, scalar) buffer Vertices {Vertex v[]; }; // Positions of an object
+//layout(buffer_reference, scalar) buffer Vertices {Vertex v[]; }; // Positions of an object
 layout(buffer_reference, scalar) buffer Indices {uint i[]; }; // Triangle indices
 layout(buffer_reference, scalar) buffer Materials {WaveFrontMaterial m[]; }; // Array of all materials on an object
 layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID for each triangle
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
-layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
+//layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_ {Voxel i[];} allVoxels;
 
 layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
@@ -106,7 +108,8 @@ void main()
     vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3  rayDir = L;
     uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
-    isShadowed   = true;
+    //uint  flags     = gl_RayFlagsOpaqueEXT;
+    isShadowed   = true;    
     traceRayEXT(topLevelAS,  // acceleration structure
                 flags,       // rayFlags
                 0xFF,        // cullMask

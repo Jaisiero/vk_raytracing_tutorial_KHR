@@ -116,7 +116,9 @@ void main()
     vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3  rayDir = L;
     uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
-    isShadowed   = true;
+    //if(prd.isHit){
+        isShadowed   = true;    
+    //}
     traceRayEXT(topLevelAS,  // acceleration structure
                 flags,       // rayFlags
                 0xFF,        // cullMask
@@ -133,6 +135,7 @@ void main()
     if(isShadowed)
     {
       attenuation = 0.3;
+      //attenuation = 1.0;
     }
     else
     {

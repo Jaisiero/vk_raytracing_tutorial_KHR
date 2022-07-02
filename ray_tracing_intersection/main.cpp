@@ -242,7 +242,7 @@ int main(int argc, char** argv)
       offscreenRenderPassBeginInfo.renderPass      = helloVk.m_offscreenRenderPass;
       offscreenRenderPassBeginInfo.framebuffer     = helloVk.m_offscreenFramebuffer;
       offscreenRenderPassBeginInfo.renderArea      = {{0, 0}, helloVk.getSize()};
-
+        
       // Rendering Scene
       if(useRaytracer)
       {

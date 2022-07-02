@@ -50,6 +50,8 @@ void main()
   float tMin     = 0.001;
   float tMax     = 10000.0;
 
+  prd.isHit = false;
+
   traceRayEXT(topLevelAS,     // acceleration structure
               rayFlags,       // rayFlags
               0xFF,           // cullMask
