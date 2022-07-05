@@ -24,6 +24,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "obj_loader.h"
 #include "stb_image.h"
+#include "global_constants.h"
 
 #include "hello_vulkan.h"
 #include "nvh/alignment.hpp"
@@ -405,7 +406,7 @@ void HelloVulkan::destroyResources()
   vkDestroyDescriptorPool(m_device, m_rtDescPool, nullptr);
   vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
   m_alloc.destroy(m_rtSBTBuffer);
-  
+
   m_alloc.destroy(m_voxelsBuffer);
   m_alloc.destroy(m_voxelsAabbBuffer);
   m_alloc.destroy(m_voxelsMatColorBuffer);
@@ -643,7 +644,7 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
   // Identify the above data as containing opaque triangles.
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
   asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-  asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
   asGeom.geometry.triangles = triangles;
 
   // The entire array will be used to build the BLAS.
@@ -674,9 +675,9 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 
   // Setting up the build info of the acceleration (C version, c++ gives wrong type)
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-  asGeom.geometryType   = VK_GEOMETRY_TYPE_AABBS_KHR;
+  asGeom.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
   //asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-  asGeom.flags = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;  // Avoid double hits;
+  asGeom.flags          = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;  // Avoid double hits;
   asGeom.geometry.aabbs = aabbs;
 
   VkAccelerationStructureBuildRangeInfoKHR offset{};
@@ -703,21 +704,39 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   std::normal_distribution<float>       yd{6.f, 3.f};
   std::uniform_real_distribution<float> radd{.2f, .5f};
 
+  size_t chunk_size = nbVoxels * nbVoxels * nbVoxels;
   // All voxels
-  m_voxels.resize(nbVoxels);
-  auto side = radd(gen);
-  for(uint32_t i = 0; i < nbVoxels; i++)
+  m_voxels.resize(chunk_size);
+  float side = VOXEL_SIZE;
+  /*for(uint32_t i = 0; i < nbVoxels; i++)
   {
     Voxel s;
     s.center     = nvmath::vec3f(xzd(gen), yd(gen), xzd(gen));
     s.side      = side;
     s.level  = 1;
     m_voxels[i] = std::move(s);
+  }*/
+
+  float half_side = side / 2;
+
+  for(uint32_t z = 0; z < nbVoxels; z++)
+  {
+    for(uint32_t y = 0; y < nbVoxels; y++)
+    {
+      for(uint32_t x = 0; x < nbVoxels; x++)
+      {
+        Voxel s;
+        s.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
+        s.side   = side;
+        s.level  = 1;
+        m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(s);
+      }
+    }
   }
 
   // Axis aligned bounding box of each sphere
   std::vector<Aabb> aabbs;
-  aabbs.reserve(nbVoxels);
+  aabbs.reserve(chunk_size);
   for(const auto& s : m_voxels)
   {
     Aabb aabb;
@@ -730,7 +749,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   MaterialObj mat;
   mat.diffuse = nvmath::vec3f(0, 1, 1);
   std::vector<MaterialObj> materials;
-  std::vector<int>         matIdx(nbVoxels);
+  std::vector<int>         matIdx(chunk_size);
   materials.emplace_back(mat);
   /*mat.diffuse = nvmath::vec3f(1, 1, 0);
   materials.emplace_back(mat);*/
@@ -740,7 +759,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   //{
   //  matIdx[i] = i % 2;
   //}
-  
+
   // Assign a material to each sphere
   for(size_t i = 0; i < m_voxels.size(); i++)
   {
@@ -751,10 +770,10 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   using vkBU = VkBufferUsageFlagBits;
   nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
   auto              cmdBuf = genCmdBuf.createCommandBuffer();
-  m_voxelsBuffer          = m_alloc.createBuffer(cmdBuf, m_voxels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  m_voxelsAabbBuffer      = m_alloc.createBuffer(cmdBuf, aabbs,
-                                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                                                 | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+  m_voxelsBuffer           = m_alloc.createBuffer(cmdBuf, m_voxels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_voxelsAabbBuffer       = m_alloc.createBuffer(cmdBuf, aabbs,
+                                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                                | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
   m_voxelsMatIndexBuffer =
       m_alloc.createBuffer(cmdBuf, matIdx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   m_voxelsMatColorBuffer =
@@ -827,17 +846,24 @@ void HelloVulkan::createTopLevelAS()
     tlas.emplace_back(rayInst);
   }
 
-  // Add the blas containing all implicit objects
-  {
-    VkAccelerationStructureInstanceKHR rayInst{};
-    rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::mat4f(1));  // (identity)
-    rayInst.instanceCustomIndex            = nbObj;  // nbObj == last object == implicit
-    rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
-    rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-    rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
-    tlas.emplace_back(rayInst);
-  }
+  float    chunkSide = VOXELS_PER_CHUNK * VOXEL_SIZE;
+  uint32_t z = 0;
+  for(uint32_t x = 0; x < CHUNK_NUM; x++)
+    for(uint32_t y = 0; y < CHUNK_NUM; y++)
+    // Add the blas containing all implicit objects
+    {
+      VkAccelerationStructureInstanceKHR rayInst{};
+      //rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::mat4f(1));  // (identity)
+      //rayInst.instanceCustomIndex            = nbObj;  // nbObj == last object == implicit
+      rayInst.transform = nvvk::toTransformMatrixKHR(nvmath::mat4f(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x * chunkSide,
+                                                                   y * chunkSide, z * chunkSide, 1));  // (identity)
+      rayInst.instanceCustomIndex            = x + (y*CHUNK_NUM);
+      rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
+      rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+      rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
+      rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
+      tlas.emplace_back(rayInst);
+    }
 
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 }
@@ -1041,7 +1067,7 @@ void HelloVulkan::createRtShaderBindingTable()
   uint32_t handleSizeAligned = nvh::align_up(handleSize, m_rtProperties.shaderGroupHandleAlignment);
 
   m_rgenRegion.stride = nvh::align_up(handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
-  m_rgenRegion.size   = m_rgenRegion.stride;  // The size member of pRayGenShaderBindingTable must be equal to its stride member
+  m_rgenRegion.size = m_rgenRegion.stride;  // The size member of pRayGenShaderBindingTable must be equal to its stride member
   m_missRegion.stride = handleSizeAligned;
   m_missRegion.size   = nvh::align_up(missCount * handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
   m_hitRegion.stride  = handleSizeAligned;
@@ -1108,7 +1134,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const nvmath::vec4f& c
   m_pcRay.lightPosition  = m_pcRaster.lightPosition;
   m_pcRay.lightIntensity = m_pcRaster.lightIntensity;
   m_pcRay.lightType      = m_pcRaster.lightType;
-  m_pcRay.maxDistance    = 50;
+  m_pcRay.maxDistance    = 500;
 
   std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);

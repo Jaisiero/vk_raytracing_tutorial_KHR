@@ -27,6 +27,8 @@
 #include "backends/imgui_impl_glfw.h"
 #include "imgui.h"
 
+#include "global_constants.h"
+
 #include "hello_vulkan.h"
 #include "imgui/imgui_camera_widget.h"
 #include "nvh/cameramanipulator.hpp"
@@ -160,7 +162,7 @@ int main(int argc, char** argv)
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/Medieval_building.obj", defaultSearchPaths, true));
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
-  helloVk.createVoxels(100);
+  helloVk.createVoxels(VOXELS_PER_CHUNK);
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();

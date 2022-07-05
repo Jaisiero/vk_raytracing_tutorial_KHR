@@ -73,9 +73,9 @@ public:
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
       {1},                // Identity matrix
-      {10.f, 15.f, 8.f},  // light position
+      {20.f, 25.f, 20.f},  // light position
       0,                  // instance Id
-      100.f,              // light intensity
+      500.f,              // light intensity
       0                   // light type
   };
 
