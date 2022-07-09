@@ -848,16 +848,16 @@ void HelloVulkan::createTopLevelAS()
 
   float    chunkSide = VOXELS_PER_CHUNK * VOXEL_SIZE;
   uint32_t z = 0;
-  for(uint32_t x = 0; x < CHUNK_NUM; x++)
-    for(uint32_t y = 0; y < CHUNK_NUM; y++)
+  for(uint32_t y = 0; y < CHUNK_NUM; y++)
+    for(uint32_t x = 0; x < CHUNK_NUM; x++)
     // Add the blas containing all implicit objects
     {
       VkAccelerationStructureInstanceKHR rayInst{};
       //rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::mat4f(1));  // (identity)
       //rayInst.instanceCustomIndex            = nbObj;  // nbObj == last object == implicit
-      rayInst.transform = nvvk::toTransformMatrixKHR(nvmath::mat4f(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x * chunkSide,
-                                                                   y * chunkSide, z * chunkSide, 1));  // (identity)
-      rayInst.instanceCustomIndex            = x + (y*CHUNK_NUM);
+      rayInst.transform = nvvk::toTransformMatrixKHR(nvmath::translation_mat4( x * chunkSide,
+                                                                   y * chunkSide, z * chunkSide));  // (identity)
+      rayInst.instanceCustomIndex            = nbObj + x + (y * CHUNK_NUM);
       rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
       rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
       rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
