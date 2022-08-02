@@ -58,10 +58,11 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 void main()
 {
   // Object data
+  ObjDesc    objResource = objDesc.i[1];
   //ObjDesc    objResource = objDesc.i[gl_InstanceID];
   //ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
-  //MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
-  //Materials  materials   = Materials(objResource.materialAddress);
+  MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
+  Materials  materials   = Materials(objResource.materialAddress);
 
   vec3 worldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
@@ -98,9 +99,9 @@ void main()
   }
 
   // Material of the object
-  //int               matIdx = matIndices.i[gl_PrimitiveID%4096];
-  //WaveFrontMaterial mat    = materials.m[matIdx];
-  WaveFrontMaterial mat;
+  int               matIdx = matIndices.i[gl_PrimitiveID%4095];
+  WaveFrontMaterial mat    = materials.m[matIdx];
+  // WaveFrontMaterial mat;
 
   // Diffuse
   vec3  diffuse     = computeDiffuse(mat, L, worldNrm);
