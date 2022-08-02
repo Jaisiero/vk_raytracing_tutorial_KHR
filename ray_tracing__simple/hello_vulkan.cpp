@@ -119,8 +119,14 @@ void HelloVulkan::createDescriptorSetLayout()
   // Implicit geometries
   m_descSetLayoutBind.addBinding(SceneBindings::eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
                                  VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR
-                                     /*
-                                     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR*/);
+                                     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+  //// Implicit geometries
+  //m_descSetLayoutBind.addBinding(SceneBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR
+  //                                   | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+  // Implicit geometries
+  m_descSetLayoutBind.addBinding(SceneBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+                                 VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
   //// Global world properties
   //m_descSetLayoutBind.addBinding(SceneBindings::eWorldProp, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
   //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
@@ -155,6 +161,9 @@ void HelloVulkan::updateDescriptorSet()
 
   VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicit, &dbiVoxels));
+
+  VkDescriptorBufferInfo dbiTlasPos{m_TLASPositionBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicitTLAS, &dbiTlasPos));
 
   //VkDescriptorBufferInfo dbiWorldProp{m_worldBuffer.buffer, 0, VK_WHOLE_SIZE};
   //writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eWorldProp, &dbiWorldProp));
@@ -407,6 +416,7 @@ void HelloVulkan::destroyResources()
   vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
   m_alloc.destroy(m_rtSBTBuffer);
 
+  m_alloc.destroy(m_TLASPositionBuffer);
   m_alloc.destroy(m_voxelsBuffer);
   m_alloc.destroy(m_voxelsAabbBuffer);
   m_alloc.destroy(m_voxelsMatColorBuffer);
@@ -676,8 +686,8 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
   // Setting up the build info of the acceleration (C version, c++ gives wrong type)
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
   asGeom.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
-  //asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-  asGeom.flags          = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;  // Avoid double hits;
+  asGeom.flags        = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  //asGeom.flags          = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;  // Avoid double hits;
   asGeom.geometry.aabbs = aabbs;
 
   VkAccelerationStructureBuildRangeInfoKHR offset{};
@@ -698,11 +708,33 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 //
 void HelloVulkan::createVoxels(uint32_t nbVoxels)
 {
-  std::random_device                    rd{};
-  std::mt19937                          gen{rd()};
-  std::normal_distribution<float>       xzd{0.f, 5.f};
-  std::normal_distribution<float>       yd{6.f, 3.f};
-  std::uniform_real_distribution<float> radd{.2f, .5f};
+  //std::random_device                    rd{};
+  //std::mt19937                          gen{rd()};
+  //std::normal_distribution<float>       xzd{0.f, 5.f};
+  //std::normal_distribution<float>       yd{6.f, 3.f};
+  //std::uniform_real_distribution<float> radd{.2f, .5f};
+
+
+  //create TLAS number
+  size_t TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
+  m_TLASPosition.resize(TLAS_num);
+  auto nbObj        = static_cast<uint32_t>(m_instances.size());
+  m_TLASPosition[0] = vec3(0, 0, 0);
+
+  float  chunkSide    = VOXELS_PER_CHUNK * VOXEL_SIZE + 2;
+  auto  fake_pos  = vec3(VOXELS_PER_CHUNK, VOXELS_PER_CHUNK, 0);
+
+  uint32_t z         = 0;
+  for(uint32_t y = 0; y < CHUNK_NUM; y++)
+    for(uint32_t x = 0; x < CHUNK_NUM; x++)
+    // Add the tlas position
+    {
+      vec3 pos = vec3(x * chunkSide + fake_pos.x, y * chunkSide + fake_pos.y, z * chunkSide);
+      //vec3 pos                    = vec3(x * chunkSide + fake_pos.x, y * chunkSide + fake_pos.y, z * chunkSide);
+      auto customIndex            = nbObj + x + (y * CHUNK_NUM);
+      m_TLASPosition[customIndex] = pos;
+    }
+
 
   size_t chunk_size = nbVoxels * nbVoxels * nbVoxels;
   // All voxels
@@ -727,8 +759,8 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
       {
         Voxel s;
         s.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
-        s.side   = side;
-        s.level  = 1;
+        s.side   = half_side;
+        s.level                                                  = 1;
         m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(s);
       }
     }
@@ -740,8 +772,8 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   for(const auto& s : m_voxels)
   {
     Aabb aabb;
-    aabb.minimum = s.center - nvmath::vec3f(s.side);
-    aabb.maximum = s.center + nvmath::vec3f(s.side);
+    aabb.minimum   = s.center - nvmath::vec3f(s.side);
+    aabb.maximum   = s.center + nvmath::vec3f(s.side);
     aabbs.emplace_back(aabb);
   }
 
@@ -771,6 +803,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
   auto              cmdBuf = genCmdBuf.createCommandBuffer();
   m_voxelsBuffer           = m_alloc.createBuffer(cmdBuf, m_voxels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_TLASPositionBuffer     = m_alloc.createBuffer(cmdBuf, m_TLASPosition, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   m_voxelsAabbBuffer       = m_alloc.createBuffer(cmdBuf, aabbs,
                                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
                                                 | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
@@ -782,6 +815,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
 
   // Debug information
   m_debug.setObjectName(m_voxelsBuffer.buffer, "voxels");
+  m_debug.setObjectName(m_TLASPositionBuffer.buffer, "TLASPosition");
   m_debug.setObjectName(m_voxelsAabbBuffer.buffer, "voxelsAabb");
   m_debug.setObjectName(m_voxelsMatColorBuffer.buffer, "voxelsMat");
   m_debug.setObjectName(m_voxelsMatIndexBuffer.buffer, "voxelsMatIdx");
@@ -846,23 +880,41 @@ void HelloVulkan::createTopLevelAS()
     tlas.emplace_back(rayInst);
   }
 
-  float    chunkSide = VOXELS_PER_CHUNK * VOXEL_SIZE;
-  uint32_t z = 0;
+  //for(uint32_t i = 0; i < nbObj; i++)
+  //{
+  //  const auto& inst = m_instances[i];
+
+  //  VkAccelerationStructureInstanceKHR rayInst{};
+  //  rayInst.transform = nvvk::toTransformMatrixKHR(nvmath::translation_mat4(0.0f, 20.0f, 0.0f));  // Position of the instance
+  //  rayInst.instanceCustomIndex            = inst.objIndex;                               // gl_InstanceCustomIndexEXT
+  //  rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(inst.objIndex);
+  //  rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+  //  rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
+  //  rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
+  //  tlas.emplace_back(rayInst);
+  //}
+
+  //uint32_t z = 0, x = 0, y = 0;
+
+  float    chunkSide = VOXELS_PER_CHUNK * VOXEL_SIZE + 2;
+  uint32_t z         = 0;
   for(uint32_t y = 0; y < CHUNK_NUM; y++)
     for(uint32_t x = 0; x < CHUNK_NUM; x++)
     // Add the blas containing all implicit objects
     {
+      auto                               customIndex = nbObj + x + (y * CHUNK_NUM);
+      vec3                               pos         = m_TLASPosition[customIndex];
       VkAccelerationStructureInstanceKHR rayInst{};
       //rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::mat4f(1));  // (identity)
       //rayInst.instanceCustomIndex            = nbObj;  // nbObj == last object == implicit
-      rayInst.transform = nvvk::toTransformMatrixKHR(nvmath::translation_mat4( x * chunkSide,
-                                                                   y * chunkSide, z * chunkSide));  // (identity)
-      rayInst.instanceCustomIndex            = nbObj + x + (y * CHUNK_NUM);
+      rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::translation_mat4(pos));  // (identity)
+      rayInst.instanceCustomIndex            = customIndex;
       rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
       rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
       rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
       rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
       tlas.emplace_back(rayInst);
+      //m_TLASPosition[customIndex] = pos;
     }
 
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
@@ -1000,7 +1052,7 @@ void HelloVulkan::createRtPipeline()
   group.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
   group.closestHitShader   = eClosestHit2;
   group.intersectionShader = eIntersection;
-  group.anyHitShader       = eAnyHit;
+  //group.anyHitShader       = eAnyHit;
   m_rtShaderGroups.push_back(group);
 
   // Push constant: we want to be able to update constants used by the shaders

@@ -24,6 +24,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_debug_printf : enable
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
@@ -34,6 +35,12 @@ layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_
 {
   Voxel allVoxels[];
 };
+
+layout(set = 1, binding = eImplicitTLAS, scalar) buffer allTLASPosition_
+{
+  vec3 allTLASPosition[];
+};
+
 layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
 
@@ -46,22 +53,6 @@ struct Ray
 
 // Ray-Voxel intersection
 // http://viclw17.github.io/2018/07/16/raytracing-ray-voxel-intersection/
-//float hitVoxel(const Voxel s, const Ray r)
-//{
-//  vec3  oc           = r.origin - s.center;
-//  float a            = dot(r.direction, r.direction);
-//  float b            = 2.0 * dot(oc, r.direction);
-//  float c            = dot(oc, oc) - s.side * s.side;
-//  float discriminant = b * b - 4 * a * c;
-//  if(discriminant < 0)
-//  {
-//    return -1.0;
-//  }
-//  else
-//  {
-//    return (-b - sqrt(discriminant)) / (2.0 * a);
-//  }
-//}
 
 bool isTooFar(const Aabb aabb, const vec3 cameraPos) 
 {
@@ -97,6 +88,8 @@ void main()
 
   // Voxel data
   Voxel voxel = allVoxels[gl_PrimitiveID];
+  vec3 pos = allTLASPosition[gl_InstanceCustomIndexEXT];
+  debugPrintfEXT("TLAS pos x: %d, y: %d, z: %d\n", pos.x, pos.y, pos.z);
 
     float tHit    = -1;
     int   hitKind = 0;
@@ -104,8 +97,10 @@ void main()
     {
         // AABB intersection
         Aabb aabb;
-        aabb.minimum = voxel.center - vec3(voxel.side);
-        aabb.maximum = voxel.center + vec3(voxel.side);
+        aabb.minimum = (pos + voxel.center) - vec3(voxel.side);
+        aabb.maximum = (pos + voxel.center) + vec3(voxel.side);
+        //aabb.minimum = voxel.center - vec3(voxel.side);
+        //aabb.maximum = voxel.center + vec3(voxel.side);
         if(!isTooFar(aabb, origin.xyz)) {
             hitKind = 1;
             _isHit = true;

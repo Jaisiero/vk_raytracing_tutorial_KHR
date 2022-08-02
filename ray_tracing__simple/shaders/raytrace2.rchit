@@ -46,6 +46,10 @@ layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 //layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_ {Voxel i[];} allVoxels;
+layout(set = 1, binding = eImplicitTLAS, scalar) buffer allTLASPosition_
+{
+  vec3 allTLASPosition[];
+};
 
 layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 // clang-format on
@@ -54,16 +58,18 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 void main()
 {
   // Object data
-  ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
-  MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
-  Materials  materials   = Materials(objResource.materialAddress);
+  //ObjDesc    objResource = objDesc.i[gl_InstanceID];
+  //ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
+  //MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
+  //Materials  materials   = Materials(objResource.materialAddress);
 
   vec3 worldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
-  Voxel instance = allVoxels.i[gl_PrimitiveID];
+  Voxel instance = allVoxels.i[gl_PrimitiveID%4096];
+  vec3 pos = allTLASPosition[gl_InstanceCustomIndexEXT];
 
   // Computing the normal at hit position
-  vec3 worldNrm = normalize(worldPos - instance.center);
+  vec3 worldNrm = normalize(worldPos - (instance.center + pos));
 
   // Computing the normal for a cube
   //if(gl_HitKindEXT == KIND_CUBE)  // Aabb
@@ -92,8 +98,9 @@ void main()
   }
 
   // Material of the object
-  int               matIdx = matIndices.i[gl_PrimitiveID];
-  WaveFrontMaterial mat    = materials.m[matIdx];
+  //int               matIdx = matIndices.i[gl_PrimitiveID%4096];
+  //WaveFrontMaterial mat    = materials.m[matIdx];
+  WaveFrontMaterial mat;
 
   // Diffuse
   vec3  diffuse     = computeDiffuse(mat, L, worldNrm);

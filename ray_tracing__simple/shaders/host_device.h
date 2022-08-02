@@ -44,8 +44,8 @@ START_BINDING(SceneBindings)
   eGlobals  = 0,  // Global uniform containing camera matrices
   eObjDescs = 1,  // Access to the object descriptions
   eTextures = 2,   // Access to textures
-  eImplicit = 3/*,   // All implicit objects
-  eWorldProp = 4   // All global world properties*/
+  eImplicit = 3,   // All implicit objects
+  eImplicitTLAS = 4   // All implicit instances
 END_BINDING();
 
 START_BINDING(RtxBindings)

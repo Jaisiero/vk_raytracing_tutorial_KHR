@@ -72,11 +72,11 @@ public:
 
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
-      {1},                // Identity matrix
+      {1},                 // Identity matrix
       {20.f, 25.f, 20.f},  // light position
-      0,                  // instance Id
-      500.f,              // light intensity
-      0                   // light type
+      0,                   // instance Id
+      500.f,               // light intensity
+      0                    // light type
   };
 
   // Array of objects and instances in the scene
@@ -156,9 +156,12 @@ public:
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
 
-  std::vector<Voxel> m_voxels;                // All voxels
-  nvvk::Buffer        m_voxelsBuffer;          // Buffer holding the voxels
-  nvvk::Buffer        m_voxelsAabbBuffer;      // Buffer of all Aabb
-  nvvk::Buffer        m_voxelsMatColorBuffer;  // Multiple materials
-  nvvk::Buffer        m_voxelsMatIndexBuffer;  // Define which voxel uses which material
+  std::vector<Voxel> m_voxels;                 // All voxels
+  std::vector<vec3>  m_TLASPosition;           // All TLAS Position
+  nvvk::Buffer       m_voxelsBuffer;           // Buffer holding the voxels
+  nvvk::Buffer       m_TLASPositionBuffer;     // All voxel TLAS positions
+  nvvk::Buffer       m_voxelsInstancesBuffer;  // Buffer holding the voxel chunk instances
+  nvvk::Buffer       m_voxelsAabbBuffer;       // Buffer of all Aabb
+  nvvk::Buffer       m_voxelsMatColorBuffer;   // Multiple materials
+  nvvk::Buffer       m_voxelsMatIndexBuffer;   // Define which voxel uses which material
 };

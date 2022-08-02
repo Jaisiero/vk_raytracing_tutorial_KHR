@@ -133,6 +133,7 @@ int main(int argc, char** argv)
   VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);  // To use vkCmdTraceRaysKHR
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
+  contextInfo.addDeviceExtension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME); // Required for shader debugging pourpouses
 
   // Creating Vulkan base application
   nvvk::Context vkctx{};
@@ -169,12 +170,13 @@ int main(int argc, char** argv)
   helloVk.createGraphicsPipeline();
   helloVk.createUniformBuffer();
   helloVk.createObjDescriptionBuffer();
-  helloVk.updateDescriptorSet();
+  //helloVk.updateDescriptorSet();
 
   // #VKRay
   helloVk.initRayTracing();
   helloVk.createBottomLevelAS();
   helloVk.createTopLevelAS();
+  helloVk.updateDescriptorSet();
   helloVk.createRtDescriptorSet();
   helloVk.createRtPipeline();
   helloVk.createRtShaderBindingTable();
