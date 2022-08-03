@@ -703,6 +703,14 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 }
 
 
+
+void HelloVulkan::createWorld() 
+{
+  TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
+  createVoxels(VOXELS_PER_CHUNK);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 // Creating all voxels
 //
@@ -714,9 +722,6 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   //std::normal_distribution<float>       yd{6.f, 3.f};
   //std::uniform_real_distribution<float> radd{.2f, .5f};
 
-
-  //create TLAS number
-  size_t TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
   m_TLASPosition.resize(TLAS_num);
   auto nbObj        = static_cast<uint32_t>(m_instances.size());
   m_TLASPosition[0] = vec3(0, 0, 0);
@@ -729,7 +734,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
     for(uint32_t x = 0; x < CHUNK_NUM; x++)
     // Add the tlas position
     {
-      vec3 pos = vec3(x * chunkSide + fake_pos.x, y * chunkSide + fake_pos.y, z * chunkSide);
+      vec3 pos = vec3(x * chunkSide, y * chunkSide, z * chunkSide);
       //vec3 pos                    = vec3(x * chunkSide + fake_pos.x, y * chunkSide + fake_pos.y, z * chunkSide);
       auto customIndex            = nbObj + x + (y * CHUNK_NUM);
       m_TLASPosition[customIndex] = pos;
@@ -825,7 +830,6 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   ObjDesc objDesc{};
   objDesc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatColorBuffer.buffer);
   objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatIndexBuffer.buffer);
-  m_objDesc.emplace_back(objDesc);
 
   for(auto i = 0; i < TLAS_num; i++)
     m_objDesc.emplace_back(objDesc);

@@ -127,7 +127,7 @@ public:
   void initRayTracing();
   auto objectToVkGeometryKHR(const ObjModel& model);
   auto voxelsToVkGeometryKHR();
-  void createVoxels(uint32_t nbVoxels);
+  void createWorld();
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();
@@ -164,4 +164,9 @@ public:
   nvvk::Buffer       m_voxelsAabbBuffer;       // Buffer of all Aabb
   nvvk::Buffer       m_voxelsMatColorBuffer;   // Multiple materials
   nvvk::Buffer       m_voxelsMatIndexBuffer;   // Define which voxel uses which material
+
+protected:
+  void createVoxels(uint32_t nbVoxels);
+  //create TLAS number
+  size_t TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
 };
