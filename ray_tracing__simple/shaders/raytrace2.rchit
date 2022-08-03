@@ -58,9 +58,9 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 void main()
 {
   // Object data
-  ObjDesc    objResource = objDesc.i[1];
+  //ObjDesc    objResource = objDesc.i[1];
   //ObjDesc    objResource = objDesc.i[gl_InstanceID];
-  //ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
+  ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
   MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
   Materials  materials   = Materials(objResource.materialAddress);
 

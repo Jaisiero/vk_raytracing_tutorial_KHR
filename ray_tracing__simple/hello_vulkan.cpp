@@ -827,6 +827,9 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatIndexBuffer.buffer);
   m_objDesc.emplace_back(objDesc);
 
+  for(auto i = 0; i < TLAS_num; i++)
+    m_objDesc.emplace_back(objDesc);
+
   ObjInstance instance{};
   instance.objIndex = static_cast<uint32_t>(m_objModel.size());
   m_instances.emplace_back(instance);
