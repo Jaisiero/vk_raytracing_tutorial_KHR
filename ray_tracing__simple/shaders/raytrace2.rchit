@@ -58,15 +58,13 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 void main()
 {
   // Object data
-  //ObjDesc    objResource = objDesc.i[1];
-  //ObjDesc    objResource = objDesc.i[gl_InstanceID];
   ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
   MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
   Materials  materials   = Materials(objResource.materialAddress);
 
   vec3 worldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
-  Voxel instance = allVoxels.i[gl_PrimitiveID%4096];
+  Voxel instance = allVoxels.i[gl_PrimitiveID];
   vec3 pos = allTLASPosition[gl_InstanceCustomIndexEXT];
 
   // Computing the normal at hit position
@@ -99,9 +97,9 @@ void main()
   }
 
   // Material of the object
-  int               matIdx = matIndices.i[gl_PrimitiveID%4095];
-  WaveFrontMaterial mat    = materials.m[matIdx];
-  // WaveFrontMaterial mat;
+  // int               matIdx = matIndices.i[gl_PrimitiveID];
+  // WaveFrontMaterial mat    = materials.m[matIdx];
+  WaveFrontMaterial mat    = materials.m[gl_HitKindEXT-1];
 
   // Diffuse
   vec3  diffuse     = computeDiffuse(mat, L, worldNrm);

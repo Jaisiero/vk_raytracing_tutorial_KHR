@@ -102,14 +102,15 @@ void main()
         //aabb.minimum = voxel.center - vec3(voxel.side);
         //aabb.maximum = voxel.center + vec3(voxel.side);
         if(!isTooFar(aabb, origin.xyz)) {
-            hitKind = 1;
             _isHit = true;
             tHit         = hitAabb(aabb, ray);
+            highp float discretDistance = pcRay.maxDistance / voxel.maxLevel;
+            hitKind =  int(tHit / discretDistance);
+            hitKind = (hitKind < voxel.maxLevel) ? hitKind + 1 : hitKind;
         } 
     }
 
     // Report hit point
     if(hitKind > 0)
         reportIntersectionEXT(tHit, hitKind);
-    //reportIntersectionEXT(tHit, hitKind);
 }

@@ -716,9 +716,9 @@ void HelloVulkan::createWorld()
 //
 void HelloVulkan::createVoxels(uint32_t nbVoxels)
 {
-  //std::random_device                    rd{};
-  //std::mt19937                          gen{rd()};
-  //std::normal_distribution<float>       xzd{0.f, 5.f};
+  std::random_device                    rd{};
+  std::mt19937                          gen{rd()};
+  std::normal_distribution<float>       xzd{0.f, 1.f};
   //std::normal_distribution<float>       yd{6.f, 3.f};
   //std::uniform_real_distribution<float> radd{.2f, .5f};
 
@@ -762,11 +762,12 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
     {
       for(uint32_t x = 0; x < nbVoxels; x++)
       {
-        Voxel s;
-        s.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
-        s.side   = half_side;
-        s.level                                                  = 1;
-        m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(s);
+        Voxel v;
+        v.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
+        v.side   = half_side;
+        v.level                                                  = 1;
+        v.maxLevel                                               = MAX_LEVELS;
+        m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(v);
       }
     }
   }
@@ -782,13 +783,17 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
     aabbs.emplace_back(aabb);
   }
 
-  // Creating two materials
-  MaterialObj mat;
-  mat.diffuse = nvmath::vec3f(0, 1, 1);
   std::vector<MaterialObj> materials;
-  std::vector<int>         matIdx(chunk_size);
+  // Creating as many materials as levels
+  MaterialObj mat;
+  for(auto i = 0; i < MAX_LEVELS; i++)
+  {
+    mat.diffuse = nvmath::vec3f(xzd(gen), xzd(gen), xzd(gen));
+    materials.emplace_back(mat);
+  }
+  /*mat.diffuse = nvmath::vec3f(0, 1, 1);
   materials.emplace_back(mat);
-  /*mat.diffuse = nvmath::vec3f(1, 1, 0);
+  mat.diffuse = nvmath::vec3f(1, 1, 0);
   materials.emplace_back(mat);*/
 
   //// Assign a material to each sphere
@@ -797,6 +802,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   //  matIdx[i] = i % 2;
   //}
 
+  std::vector<int> matIdx(chunk_size);
   // Assign a material to each sphere
   for(size_t i = 0; i < m_voxels.size(); i++)
   {
@@ -1193,7 +1199,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const nvmath::vec4f& c
   m_pcRay.lightPosition  = m_pcRaster.lightPosition;
   m_pcRay.lightIntensity = m_pcRaster.lightIntensity;
   m_pcRay.lightType      = m_pcRaster.lightType;
-  m_pcRay.maxDistance    = 500;
+  m_pcRay.maxDistance    = MAX_VIEW_DISTANCE;
 
   std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
