@@ -102,16 +102,11 @@ void main()
         //aabb.minimum = voxel.center - vec3(voxel.side);
         //aabb.maximum = voxel.center + vec3(voxel.side);
         if(!isTooFar(aabb, origin.xyz)) {
-            highp float discretDistance = pcRay.maxDistance / voxel.maxLevel;
+            _isHit = true;
             tHit         = hitAabb(aabb, ray);
+            highp float discretDistance = pcRay.maxDistance / voxel.maxLevel;
             hitKind =  int(tHit / discretDistance);
             hitKind = (hitKind < voxel.maxLevel) ? hitKind + 1 : hitKind;
-            if(hitKind < voxel.level) 
-            {
-                hitKind = 0;
-            } else {
-                _isHit = true;
-            }
         } 
     }
 

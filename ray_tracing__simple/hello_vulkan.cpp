@@ -719,7 +719,8 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   std::random_device                    rd{};
   std::mt19937                          gen{rd()};
   std::normal_distribution<float>       xzd{0.f, 1.f};
-  //std::normal_distribution<float>       yd{6.f, 3.f};
+  //std::uniform_int_distribution<unsigned int> levels{1, MAX_LEVELS};
+  std::binomial_distribution<unsigned int> levels(9, 0.5);
   //std::uniform_real_distribution<float> radd{.2f, .5f};
 
   m_TLASPosition.resize(TLAS_num);
@@ -765,7 +766,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
         Voxel v;
         v.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
         v.side   = half_side;
-        v.level                                                  = 1;
+        v.level                                                  = levels(gen) + 1;
         v.maxLevel                                               = MAX_LEVELS;
         m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(v);
       }
