@@ -166,7 +166,7 @@ public:
   nvvk::Buffer       m_voxelsMatIndexBuffer;   // Define which voxel uses which material
 
 protected:
-  void createVoxels(uint32_t nbVoxels);
+  void createVoxels(uint32_t nbVoxels, uint8_t levels);
   //create TLAS number
   size_t TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
 };

@@ -190,7 +190,7 @@ int main(int argc, char** argv)
   std::mt19937                    gen(rd());  //Standard mersenne_twister_engine seeded with rd()
   std::normal_distribution<float> dis(1.0f, 1.0f);
   std::normal_distribution<float> disn(0.05f, 0.05f);
-  for(uint32_t n = 0; n < 2000; ++n)
+  for(uint32_t n = 0; n < 100000; ++n)
   {
     float         scale = fabsf(disn(gen));
     nvmath::mat4f mat   = nvmath::translation_mat4(nvmath::vec3f{dis(gen), 2.0f + dis(gen), dis(gen)});

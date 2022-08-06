@@ -707,28 +707,30 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 void HelloVulkan::createWorld() 
 {
   TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
-  createVoxels(VOXELS_PER_CHUNK);
+  createVoxels(VOXELS_PER_CHUNK, 4);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 // Creating all voxels
 //
-void HelloVulkan::createVoxels(uint32_t nbVoxels)
+void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
 {
   std::random_device                    rd{};
   std::mt19937                          gen{rd()};
   std::normal_distribution<float>       xzd{0.f, 1.f};
   //std::uniform_int_distribution<unsigned int> levels{1, MAX_LEVELS};
-  std::binomial_distribution<unsigned int> levels(9, 0.5);
+  std::binomial_distribution<unsigned int> levels(voxelLevels, 0.5);
   //std::uniform_real_distribution<float> radd{.2f, .5f};
+  
+  
 
   m_TLASPosition.resize(TLAS_num);
   auto nbObj        = static_cast<uint32_t>(m_instances.size());
   m_TLASPosition[0] = vec3(0, 0, 0);
 
   float  chunkSide    = VOXELS_PER_CHUNK * VOXEL_SIZE + 2;
-  auto  fake_pos  = vec3(VOXELS_PER_CHUNK, VOXELS_PER_CHUNK, 0);
+  //auto  fake_pos  = vec3(VOXELS_PER_CHUNK, VOXELS_PER_CHUNK, 0);
 
   uint32_t z         = 0;
   for(uint32_t y = 0; y < CHUNK_NUM; y++)
@@ -767,7 +769,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
         v.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
         v.side   = half_side;
         v.level                                                  = levels(gen) + 1;
-        v.maxLevel                                               = MAX_LEVELS;
+        v.maxLevel                                               = voxelLevels;
         m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(v);
       }
     }
@@ -787,7 +789,7 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels)
   std::vector<MaterialObj> materials;
   // Creating as many materials as levels
   MaterialObj mat;
-  for(auto i = 0; i < MAX_LEVELS; i++)
+  for(auto i = 0; i < voxelLevels; i++)
   {
     mat.diffuse = nvmath::vec3f(xzd(gen), xzd(gen), xzd(gen));
     materials.emplace_back(mat);
