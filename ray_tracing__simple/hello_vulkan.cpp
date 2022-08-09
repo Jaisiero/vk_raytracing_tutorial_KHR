@@ -707,7 +707,8 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 void HelloVulkan::createWorld() 
 {
   TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
-  createVoxels(VOXELS_PER_CHUNK, 4);
+  m_voxels.reserve(MAX_PRIMITIVES);
+  createVoxels(VOXELS_PER_CHUNK, 2);
 }
 
 
@@ -716,11 +717,14 @@ void HelloVulkan::createWorld()
 //
 void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
 {
+  if(voxelLevels < 1)
+    return;
+
   std::random_device                    rd{};
   std::mt19937                          gen{rd()};
   std::normal_distribution<float>       xzd{0.f, 1.f};
-  //std::uniform_int_distribution<unsigned int> levels{1, MAX_LEVELS};
-  std::binomial_distribution<unsigned int> levels(voxelLevels, 0.5);
+  //std::binomial_distribution<unsigned int> levels(voxelLevels, 0.5);
+  std::binomial_distribution<unsigned int> isVoxel(voxelLevels, 0.5);
   //std::uniform_real_distribution<float> radd{.2f, .5f};
   
   
@@ -744,18 +748,10 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
     }
 
 
-  size_t chunk_size = nbVoxels * nbVoxels * nbVoxels;
+  //size_t chunk_size = nbVoxels * nbVoxels * nbVoxels;
   // All voxels
-  m_voxels.resize(chunk_size);
-  float side = VOXEL_SIZE;
-  /*for(uint32_t i = 0; i < nbVoxels; i++)
-  {
-    Voxel s;
-    s.center     = nvmath::vec3f(xzd(gen), yd(gen), xzd(gen));
-    s.side      = side;
-    s.level  = 1;
-    m_voxels[i] = std::move(s);
-  }*/
+  //m_voxels.resize(chunk_size);
+  /*float side = VOXEL_SIZE;
 
   float half_side = side / 2;
 
@@ -773,16 +769,81 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
         m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(v);
       }
     }
+  }*/
+
+  float dim         = pow(2.f, static_cast<float>((voxelLevels + 1)));
+  auto start_aabb = vec3(0, 0, 0);
+  auto end_aabb   = vec3(dim, dim, dim);
+  auto middle_aabb = (end_aabb - start_aabb);
+  middle_aabb /= (2);
+
+  auto level_zero = new std::vector<Voxel>;
+  // Level 0 voxel
+  Voxel root;
+  root.center                                              = middle_aabb;
+  root.side                                                = dim;
+  root.level                                               = 0;
+  root.maxLevel                                            = voxelLevels;
+  level_zero->emplace_back(root);
+
+  m_voxels_level.emplace(0, level_zero);
+
+  
+  std::vector<vec3> directions;
+  //voxels.emplace_back(0, 0, 0);
+  directions.emplace_back(-1, -1, -1);  // -z, -y, -x
+  directions.emplace_back(-1, -1, 1);   // -z, -y, x
+  directions.emplace_back(-1, 1, -1);   // -z, y, -x
+  directions.emplace_back(-1, 1, 1);    // -z, y, x
+  directions.emplace_back(1, -1, -1);   // z, -y, -x
+  directions.emplace_back(1, -1, 1);    // z, -y, x
+  directions.emplace_back(1, 1, -1);    // z, y, -x
+  directions.emplace_back(1, 1, 1);     // z, y, x
+  
+
+
+  // Build tree
+  for(uint8_t currentLevel = 1; currentLevel <= voxelLevels; currentLevel++)
+  {
+    auto voxels_this_level = new std::vector<Voxel>;
+    auto               voxels_prev_level = m_voxels_level[currentLevel - 1];
+    for(auto& it_prev : *voxels_prev_level)
+    {
+      for(auto& it_dir : directions)
+      {
+        if(isVoxel(gen) >= currentLevel)
+        {
+            auto current_center = it_prev.center;
+            current_center += (it_dir *= (dim / ((currentLevel + 1) * 2)));
+            // Level n voxels
+            Voxel v;
+            v.center   = current_center;
+            v.side     = dim;
+            v.level    = currentLevel;
+            v.maxLevel = voxelLevels;
+            voxels_this_level->emplace_back(v);
+        }
+      }
+    }
+    m_voxels_level.emplace(currentLevel, voxels_this_level);
   }
+
+
+
+
+
+
+  m_voxels.assign(level_zero->begin(), level_zero->end());
+
 
   // Axis aligned bounding box of each sphere
   std::vector<Aabb> aabbs;
-  aabbs.reserve(chunk_size);
-  for(const auto& s : m_voxels)
+  aabbs.reserve(m_voxels.size());
+  for(const auto& v : m_voxels)
   {
     Aabb aabb;
-    aabb.minimum   = s.center - nvmath::vec3f(s.side);
-    aabb.maximum   = s.center + nvmath::vec3f(s.side);
+    aabb.minimum   = v.center - nvmath::vec3f(v.side);
+    aabb.maximum   = v.center + nvmath::vec3f(v.side);
     aabbs.emplace_back(aabb);
   }
 
@@ -794,20 +855,9 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
     mat.diffuse = nvmath::vec3f(xzd(gen), xzd(gen), xzd(gen));
     materials.emplace_back(mat);
   }
-  /*mat.diffuse = nvmath::vec3f(0, 1, 1);
-  materials.emplace_back(mat);
-  mat.diffuse = nvmath::vec3f(1, 1, 0);
-  materials.emplace_back(mat);*/
-
-  //// Assign a material to each sphere
-  //for(size_t i = 0; i < m_voxels.size(); i++)
-  //{
-  //  matIdx[i] = i % 2;
-  //}
-
-  std::vector<int> matIdx(chunk_size);
+  std::vector<int> matIdx(MAX_PRIMITIVES);
   // Assign a material to each sphere
-  for(size_t i = 0; i < m_voxels.size(); i++)
+  for(size_t i = 0; i < MAX_PRIMITIVES; i++)
   {
     matIdx[i] = 0;
   }

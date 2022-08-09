@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <map>
+
 #include "nvvk/appbase_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
@@ -156,6 +158,7 @@ public:
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
 
+  std::map < uint8_t, std::vector<Voxel> *> m_voxels_level;  // All voxels by level
   std::vector<Voxel> m_voxels;                 // All voxels
   std::vector<vec3>  m_TLASPosition;           // All TLAS Position
   nvvk::Buffer       m_voxelsBuffer;           // Buffer holding the voxels
