@@ -31,14 +31,14 @@
 
 hitAttributeEXT bool _isHit;
 
-layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_
+layout(set = 0, binding = eImplicit, scalar) buffer allVoxels_
 {
   Voxel allVoxels[];
 };
 
-layout(set = 1, binding = eImplicitTLAS, scalar) buffer allTLASPosition_
+layout(set = 0, binding = eImplicitTLAS, scalar) buffer allTLAS_
 {
-  vec3 allTLASPosition[];
+  VoxelChunk allTLAS[];
 };
 
 layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
@@ -88,8 +88,8 @@ void main()
 
   // Voxel data
   Voxel voxel = allVoxels[gl_PrimitiveID];
-  vec3 pos = allTLASPosition[gl_InstanceCustomIndexEXT];
-  debugPrintfEXT("TLAS pos x: %d, y: %d, z: %d\n", pos.x, pos.y, pos.z);
+  VoxelChunk chunk = allTLAS[gl_InstanceCustomIndexEXT];
+  debugPrintfEXT("TLAS pos x: %d, y: %d, z: %d\n", chunk.pos.x, chunk.pos.y, chunk.pos.z);
 
     float tHit    = -1;
     int   hitKind = 0;
@@ -97,14 +97,14 @@ void main()
     {
         // AABB intersection
         Aabb aabb;
-        aabb.minimum = (pos + voxel.center) - vec3(voxel.side);
-        aabb.maximum = (pos + voxel.center) + vec3(voxel.side);
+        aabb.minimum = (chunk.pos + voxel.center) - vec3(voxel.side);
+        aabb.maximum = (chunk.pos + voxel.center) + vec3(voxel.side);
         //aabb.minimum = voxel.center - vec3(voxel.side);
         //aabb.maximum = voxel.center + vec3(voxel.side);
         if(!isTooFar(aabb, origin.xyz)) {
             highp float discretDistance = pcRay.maxDistance / voxel.maxLevel;
             tHit         = hitAabb(aabb, ray);
-            hitKind =  int(tHit / discretDistance);
+            hitKind =  int(voxel.maxLevel - tHit / discretDistance);
             hitKind = (hitKind < voxel.maxLevel) ? hitKind + 1 : hitKind;
             if(hitKind < voxel.level) 
             {
@@ -116,6 +116,6 @@ void main()
     }
 
     // Report hit point
-    if(hitKind > 0)
+    if(_isHit)
         reportIntersectionEXT(tHit, hitKind);
 }

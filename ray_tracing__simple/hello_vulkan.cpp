@@ -116,17 +116,13 @@ void HelloVulkan::createDescriptorSetLayout()
   // Textures
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-  // Implicit geometries
-  m_descSetLayoutBind.addBinding(SceneBindings::eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-                                 VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR
-                                     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
   //// Implicit geometries
-  //m_descSetLayoutBind.addBinding(SceneBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  //m_descSetLayoutBind.addBinding(SceneBindings::eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
   //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR
   //                                   | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-  // Implicit geometries
-  m_descSetLayoutBind.addBinding(SceneBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-                                 VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
+  //// Implicit geometries
+  //m_descSetLayoutBind.addBinding(SceneBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
   //// Global world properties
   //m_descSetLayoutBind.addBinding(SceneBindings::eWorldProp, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
   //                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
@@ -159,11 +155,11 @@ void HelloVulkan::updateDescriptorSet()
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
 
-  VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
+  /*VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicit, &dbiVoxels));
 
-  VkDescriptorBufferInfo dbiTlasPos{m_TLASPositionBuffer.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicitTLAS, &dbiTlasPos));
+  VkDescriptorBufferInfo dbiTlasPos{m_TLASBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eImplicitTLAS, &dbiTlasPos));*/
 
   //VkDescriptorBufferInfo dbiWorldProp{m_worldBuffer.buffer, 0, VK_WHOLE_SIZE};
   //writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eWorldProp, &dbiWorldProp));
@@ -416,11 +412,16 @@ void HelloVulkan::destroyResources()
   vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
   m_alloc.destroy(m_rtSBTBuffer);
 
-  m_alloc.destroy(m_TLASPositionBuffer);
+  m_alloc.destroy(m_TLASBuffer);
   m_alloc.destroy(m_voxelsBuffer);
+  //m_alloc.destroy(m_voxelsHitBuffer);
   m_alloc.destroy(m_voxelsAabbBuffer);
   m_alloc.destroy(m_voxelsMatColorBuffer);
   m_alloc.destroy(m_voxelsMatIndexBuffer);
+
+  vkUnmapMemory(m_device, m_stagingBufferMemory);
+  vkDestroyBuffer(m_device, m_stagingBuffer, nullptr);
+  vkFreeMemory(m_device, m_stagingBufferMemory, nullptr);
 
   m_alloc.deinit();
 }
@@ -482,6 +483,7 @@ void HelloVulkan::createOffscreenRender()
 {
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
+  //m_alloc.destroy(m_voxelsHitBuffer);
 
   // Creating the color image
   {
@@ -496,6 +498,7 @@ void HelloVulkan::createOffscreenRender()
     m_offscreenColor                        = m_alloc.createTexture(image, ivInfo, sampler);
     m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
+
 
   // Creating the depth buffer
   auto depthCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenDepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -512,6 +515,14 @@ void HelloVulkan::createOffscreenRender()
     m_offscreenDepth = m_alloc.createTexture(image, depthStencilView);
   }
 
+  //// Creating voxels hit buffer to update scene
+  //{
+  //  m_voxelsHit.clear();
+  //  m_voxelsHit.resize(m_size.height * m_size.width);
+  //}
+
+  //Creating
+
   // Setting the image layout for both color and depth
   {
     nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
@@ -519,9 +530,15 @@ void HelloVulkan::createOffscreenRender()
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenColor.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
+    /*m_voxelsHitBuffer = m_alloc.createBuffer(cmdBuf, m_voxelsHit, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    createVoxelHitStagingBuffer();*/
 
     genCmdBuf.submitAndWait(cmdBuf);
   }
+
+
+  //m_debug.setObjectName(m_voxelsHitBuffer.buffer, "voxelsHit");
 
   // Creating a renderpass for the offscreen
   if(!m_offscreenRenderPass)
@@ -543,6 +560,70 @@ void HelloVulkan::createOffscreenRender()
   info.height          = m_size.height;
   info.layers          = 1;
   vkCreateFramebuffer(m_device, &info, nullptr, &m_offscreenFramebuffer);
+}
+
+
+void HelloVulkan::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+{
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size        = size;
+  bufferInfo.usage       = usage;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  if(vkCreateBuffer(m_device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+  {
+    throw std::runtime_error("failed to create buffer!");
+  }
+
+  VkMemoryRequirements memRequirements;
+  vkGetBufferMemoryRequirements(m_device, buffer, &memRequirements);
+
+  VkMemoryAllocateInfo allocInfo{};
+  allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocInfo.allocationSize  = memRequirements.size;
+  allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+  if(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+  {
+    throw std::runtime_error("failed to allocate buffer memory!");
+  }
+
+  vkBindBufferMemory(m_device, buffer, bufferMemory, 0);
+}
+
+uint32_t HelloVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memProperties);
+  for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+  {
+    if((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+    {
+      return i;
+    }
+  }
+  //TODO!
+  return 0;
+}
+
+
+void HelloVulkan::createStagingBuffer(VkDeviceSize stagingBufferSize, VkBuffer& stagingBuffer, VkDeviceMemory& stagingBufferMemory, void **data)
+{
+  void* _data = nullptr;
+  createBuffer(stagingBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+  vkMapMemory(m_device, stagingBufferMemory, 0, stagingBufferSize, 0, data);
+}
+
+void HelloVulkan::copyBuffer(const VkCommandBuffer& cmdBuf, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+  VkBufferCopy copyRegion{};
+  copyRegion.srcOffset = 0;  // Optional
+  copyRegion.dstOffset = 0;  // Optional
+  copyRegion.size      = size;
+  vkCmdCopyBuffer(cmdBuf, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -703,8 +784,7 @@ auto HelloVulkan::voxelsToVkGeometryKHR()
 }
 
 
-
-void HelloVulkan::createWorld() 
+void HelloVulkan::createWorld()
 {
   TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
   m_voxels.reserve(MAX_PRIMITIVES);
@@ -720,75 +800,59 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
   if(voxelLevels < 1)
     return;
 
-  std::random_device                    rd{};
-  std::mt19937                          gen{rd()};
-  std::normal_distribution<float>       xzd{0.f, 1.f};
+  std::random_device              rd{};
+  std::mt19937                    gen{rd()};
+  std::normal_distribution<float> xzd{0.f, 1.f};
   //std::binomial_distribution<unsigned int> levels(voxelLevels, 0.5);
   std::binomial_distribution<unsigned int> isVoxel(voxelLevels, 0.5);
   //std::uniform_real_distribution<float> radd{.2f, .5f};
-  
-  
 
-  m_TLASPosition.resize(TLAS_num);
-  auto nbObj        = static_cast<uint32_t>(m_instances.size());
-  m_TLASPosition[0] = vec3(0, 0, 0);
 
-  float  chunkSide    = VOXELS_PER_CHUNK * VOXEL_SIZE + 2;
+  m_TLAS.resize(TLAS_num);
+  m_stagingBufferSize = m_TLAS.size() * sizeof(VoxelChunk);
+  createStagingBuffer(m_stagingBufferSize, m_stagingBuffer, m_stagingBufferMemory, reinterpret_cast<void **>(&m_voxelChunks));
+
+  auto       nbObj = static_cast<uint32_t>(m_instances.size());
+  VoxelChunk chunk;
+  chunk.id    = 0;
+  chunk.level = 0;
+  chunk.pos   = vec3(0, 0, 0);
+  ;
+  m_TLAS[0] = chunk;
+
+  float chunkSide = VOXELS_PER_CHUNK * VOXEL_SIZE + 2;
   //auto  fake_pos  = vec3(VOXELS_PER_CHUNK, VOXELS_PER_CHUNK, 0);
 
-  uint32_t z         = 0;
+  uint32_t z = 0;
   for(uint32_t y = 0; y < CHUNK_NUM; y++)
     for(uint32_t x = 0; x < CHUNK_NUM; x++)
     // Add the tlas position
     {
-      vec3 pos = vec3(x * chunkSide, y * chunkSide, z * chunkSide);
-      //vec3 pos                    = vec3(x * chunkSide + fake_pos.x, y * chunkSide + fake_pos.y, z * chunkSide);
-      auto customIndex            = nbObj + x + (y * CHUNK_NUM);
-      m_TLASPosition[customIndex] = pos;
+      auto customIndex    = nbObj + x + (y * CHUNK_NUM);
+      auto pos            = vec3(x * chunkSide, y * chunkSide, z * chunkSide);
+      chunk.id            = customIndex;
+      chunk.pos           = pos;
+      m_TLAS[customIndex] = chunk;
     }
-
-
-  //size_t chunk_size = nbVoxels * nbVoxels * nbVoxels;
-  // All voxels
-  //m_voxels.resize(chunk_size);
-  /*float side = VOXEL_SIZE;
-
-  float half_side = side / 2;
-
-  for(uint32_t z = 0; z < nbVoxels; z++)
-  {
-    for(uint32_t y = 0; y < nbVoxels; y++)
-    {
-      for(uint32_t x = 0; x < nbVoxels; x++)
-      {
-        Voxel v;
-        v.center = nvmath::vec3f(x + half_side, y + half_side, z + half_side);
-        v.side   = half_side;
-        v.level                                                  = levels(gen) + 1;
-        v.maxLevel                                               = voxelLevels;
-        m_voxels[x + (y * nbVoxels) + (z * nbVoxels * nbVoxels)] = std::move(v);
-      }
-    }
-  }*/
 
   float dim         = pow(2.f, static_cast<float>((voxelLevels + 1)));
-  auto start_aabb = vec3(0, 0, 0);
-  auto end_aabb   = vec3(dim, dim, dim);
-  auto middle_aabb = (end_aabb - start_aabb);
+  auto  start_aabb  = vec3(0, 0, 0);
+  auto  end_aabb    = vec3(dim, dim, dim);
+  auto  middle_aabb = (end_aabb - start_aabb);
   middle_aabb /= (2);
 
   auto level_zero = new std::vector<Voxel>;
   // Level 0 voxel
   Voxel root;
-  root.center                                              = middle_aabb;
-  root.side                                                = dim;
-  root.level                                               = 0;
-  root.maxLevel                                            = voxelLevels;
+  root.center   = middle_aabb;
+  root.side     = dim;
+  root.level    = 0;
+  root.maxLevel = voxelLevels;
   level_zero->emplace_back(root);
 
   m_voxels_level.emplace(0, level_zero);
 
-  
+
   std::vector<vec3> directions;
   //voxels.emplace_back(0, 0, 0);
   directions.emplace_back(-1, -1, -1);  // -z, -y, -x
@@ -799,38 +863,33 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
   directions.emplace_back(1, -1, 1);    // z, -y, x
   directions.emplace_back(1, 1, -1);    // z, y, -x
   directions.emplace_back(1, 1, 1);     // z, y, x
-  
 
 
   // Build tree
   for(uint8_t currentLevel = 1; currentLevel <= voxelLevels; currentLevel++)
   {
     auto voxels_this_level = new std::vector<Voxel>;
-    auto               voxels_prev_level = m_voxels_level[currentLevel - 1];
+    auto voxels_prev_level = m_voxels_level[currentLevel - 1];
     for(auto& it_prev : *voxels_prev_level)
     {
       for(auto& it_dir : directions)
       {
         if(isVoxel(gen) >= currentLevel)
         {
-            auto current_center = it_prev.center;
-            current_center += (it_dir *= (dim / ((currentLevel + 1) * 2)));
-            // Level n voxels
-            Voxel v;
-            v.center   = current_center;
-            v.side     = dim;
-            v.level    = currentLevel;
-            v.maxLevel = voxelLevels;
-            voxels_this_level->emplace_back(v);
+          auto current_center = it_prev.center;
+          current_center += (it_dir *= (dim / ((currentLevel + 1) * 2)));
+          // Level n voxels
+          Voxel v;
+          v.center   = current_center;
+          v.side     = dim;
+          v.level    = currentLevel;
+          v.maxLevel = voxelLevels;
+          voxels_this_level->emplace_back(v);
         }
       }
     }
     m_voxels_level.emplace(currentLevel, voxels_this_level);
   }
-
-
-
-
 
 
   m_voxels.assign(level_zero->begin(), level_zero->end());
@@ -842,8 +901,8 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
   for(const auto& v : m_voxels)
   {
     Aabb aabb;
-    aabb.minimum   = v.center - nvmath::vec3f(v.side);
-    aabb.maximum   = v.center + nvmath::vec3f(v.side);
+    aabb.minimum = v.center - nvmath::vec3f(v.side);
+    aabb.maximum = v.center + nvmath::vec3f(v.side);
     aabbs.emplace_back(aabb);
   }
 
@@ -855,40 +914,40 @@ void HelloVulkan::createVoxels(uint32_t nbVoxels, uint8_t voxelLevels)
     mat.diffuse = nvmath::vec3f(xzd(gen), xzd(gen), xzd(gen));
     materials.emplace_back(mat);
   }
-  std::vector<int> matIdx(MAX_PRIMITIVES);
-  // Assign a material to each sphere
-  for(size_t i = 0; i < MAX_PRIMITIVES; i++)
-  {
-    matIdx[i] = 0;
-  }
+  //std::vector<int> matIdx(MAX_PRIMITIVES);
+  //// Assign a material to each sphere
+  //for(size_t i = 0; i < MAX_PRIMITIVES; i++)
+  //{
+  //  matIdx[i] = 0;
+  //}
 
   // Creating all buffers
   using vkBU = VkBufferUsageFlagBits;
   nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
   auto              cmdBuf = genCmdBuf.createCommandBuffer();
   m_voxelsBuffer           = m_alloc.createBuffer(cmdBuf, m_voxels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  m_TLASPositionBuffer     = m_alloc.createBuffer(cmdBuf, m_TLASPosition, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_TLASBuffer = m_alloc.createBuffer(cmdBuf, m_TLAS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   m_voxelsAabbBuffer       = m_alloc.createBuffer(cmdBuf, aabbs,
                                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
                                                 | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
-  m_voxelsMatIndexBuffer =
-      m_alloc.createBuffer(cmdBuf, matIdx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  /* m_voxelsMatIndexBuffer =
+      m_alloc.createBuffer(cmdBuf, matIdx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);*/
   m_voxelsMatColorBuffer =
       m_alloc.createBuffer(cmdBuf, materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   genCmdBuf.submitAndWait(cmdBuf);
 
   // Debug information
   m_debug.setObjectName(m_voxelsBuffer.buffer, "voxels");
-  m_debug.setObjectName(m_TLASPositionBuffer.buffer, "TLASPosition");
+  m_debug.setObjectName(m_TLASBuffer.buffer, "TLASPosition");
   m_debug.setObjectName(m_voxelsAabbBuffer.buffer, "voxelsAabb");
   m_debug.setObjectName(m_voxelsMatColorBuffer.buffer, "voxelsMat");
-  m_debug.setObjectName(m_voxelsMatIndexBuffer.buffer, "voxelsMatIdx");
+  //m_debug.setObjectName(m_voxelsMatIndexBuffer.buffer, "voxelsMatIdx");
 
 
   // Adding an extra instance to get access to the material buffers
   ObjDesc objDesc{};
-  objDesc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatColorBuffer.buffer);
-  objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatIndexBuffer.buffer);
+  objDesc.materialAddress = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatColorBuffer.buffer);
+  //objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_voxelsMatIndexBuffer.buffer);
 
   for(auto i = 0; i < TLAS_num; i++)
     m_objDesc.emplace_back(objDesc);
@@ -969,18 +1028,18 @@ void HelloVulkan::createTopLevelAS()
     // Add the blas containing all implicit objects
     {
       auto                               customIndex = nbObj + x + (y * CHUNK_NUM);
-      vec3                               pos         = m_TLASPosition[customIndex];
+      const auto&                               chunk       = m_TLAS[customIndex];
       VkAccelerationStructureInstanceKHR rayInst{};
       //rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::mat4f(1));  // (identity)
       //rayInst.instanceCustomIndex            = nbObj;  // nbObj == last object == implicit
-      rayInst.transform                      = nvvk::toTransformMatrixKHR(nvmath::translation_mat4(pos));  // (identity)
-      rayInst.instanceCustomIndex            = customIndex;
+      rayInst.transform           = nvvk::toTransformMatrixKHR(nvmath::translation_mat4(chunk.pos));  // (identity)
+      rayInst.instanceCustomIndex = chunk.id;
       rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
       rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
       rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
       rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
       tlas.emplace_back(rayInst);
-      //m_TLASPosition[customIndex] = pos;
+      //m_TLAS[customIndex] = pos;
     }
 
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
@@ -996,6 +1055,16 @@ void HelloVulkan::createRtDescriptorSet()
                                    VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);  // TLAS
   m_rtDescSetLayoutBind.addBinding(RtxBindings::eOutImage, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
                                    VK_SHADER_STAGE_RAYGEN_BIT_KHR);  // Output image
+  //m_rtDescSetLayoutBind.addBinding(RtxBindings::eVoxelsHit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+  //                                 VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);  // Voxels hit
+  // Implicit geometries
+  m_rtDescSetLayoutBind.addBinding(RtxBindings::eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+                                   VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR
+                                       | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+  // Implicit instances
+  m_rtDescSetLayoutBind.addBinding(RtxBindings::eImplicitTLAS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+                                   VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
+
 
   m_rtDescPool      = m_rtDescSetLayoutBind.createPool(m_device);
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
@@ -1013,9 +1082,19 @@ void HelloVulkan::createRtDescriptorSet()
   descASInfo.pAccelerationStructures    = &tlas;
   VkDescriptorImageInfo imageInfo{{}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL};
 
+
+  //VkDescriptorBufferInfo dVoxelsHit{m_voxelsHitBuffer.buffer, 0, VK_WHOLE_SIZE};
+
+
+  VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
+  VkDescriptorBufferInfo dbiTlasPos{m_TLASBuffer.buffer, 0, VK_WHOLE_SIZE};
+
   std::vector<VkWriteDescriptorSet> writes;
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eTlas, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eImplicit, &dbiVoxels));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eImplicitTLAS, &dbiTlasPos));
+  //writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eVoxelsHit, &dVoxelsHit));
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -1026,10 +1105,19 @@ void HelloVulkan::createRtDescriptorSet()
 //
 void HelloVulkan::updateRtDescriptorSet()
 {
-  // (1) Output buffer
-  VkDescriptorImageInfo imageInfo{{}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL};
-  VkWriteDescriptorSet  wds = m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo);
-  vkUpdateDescriptorSets(m_device, 1, &wds, 0, nullptr);
+  std::vector<VkWriteDescriptorSet> writes;
+  // (1) Output buffers
+  VkDescriptorImageInfo  imageInfo{{}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL};
+  VkDescriptorBufferInfo dbiVoxels{m_voxelsBuffer.buffer, 0, VK_WHOLE_SIZE};
+  VkDescriptorBufferInfo dbiTlasPos{m_TLASBuffer.buffer, 0, VK_WHOLE_SIZE};
+  //VkDescriptorBufferInfo dVoxelsHit{m_voxelsHitBuffer.buffer, 0, VK_WHOLE_SIZE};
+  //VkWriteDescriptorSet   wds = m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo);
+  //vkUpdateDescriptorSets(m_device, 1, &wds, 0, nullptr);
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo));
+  //writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eVoxelsHit, &dVoxelsHit));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eImplicit, &dbiVoxels));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eImplicitTLAS, &dbiTlasPos));
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 
@@ -1241,6 +1329,17 @@ void HelloVulkan::createRtShaderBindingTable()
   m_alloc.finalizeAndReleaseStaging();
 }
 
+
+void HelloVulkan::updateAS()
+{
+  for(auto i = 1; i < TLAS_num; i++)
+  {
+    auto voxelChunk = m_voxelChunks[i];
+    printf("Voxel Chunk - id: %u, level: %u, pos -> x = %f, y = %f, z = %f\n", voxelChunk.id, voxelChunk.level,
+           voxelChunk.pos.x, voxelChunk.pos.y, voxelChunk.pos.z);
+  }
+}
+
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
 //
@@ -1265,6 +1364,8 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const nvmath::vec4f& c
 
 
   vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width, m_size.height, 1);
+
+  copyBuffer(cmdBuf, m_TLASBuffer.buffer, m_stagingBuffer, m_stagingBufferSize);
 
 
   m_debug.endLabel(cmdBuf);

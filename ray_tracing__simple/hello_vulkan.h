@@ -138,6 +138,8 @@ public:
   void createRtShaderBindingTable();
   void raytrace(const VkCommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
 
+  void updateAS();
+
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
   nvvk::RaytracingBuilderKHR                      m_rtBuilder;
@@ -158,18 +160,34 @@ public:
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
 
-  std::map < uint8_t, std::vector<Voxel> *> m_voxels_level;  // All voxels by level
-  std::vector<Voxel> m_voxels;                 // All voxels
-  std::vector<vec3>  m_TLASPosition;           // All TLAS Position
-  nvvk::Buffer       m_voxelsBuffer;           // Buffer holding the voxels
-  nvvk::Buffer       m_TLASPositionBuffer;     // All voxel TLAS positions
-  nvvk::Buffer       m_voxelsInstancesBuffer;  // Buffer holding the voxel chunk instances
-  nvvk::Buffer       m_voxelsAabbBuffer;       // Buffer of all Aabb
-  nvvk::Buffer       m_voxelsMatColorBuffer;   // Multiple materials
-  nvvk::Buffer       m_voxelsMatIndexBuffer;   // Define which voxel uses which material
+
+  std::map<uint8_t, std::vector<Voxel>*> m_voxels_level;  // All voxels by level
+  std::vector<Voxel>                     m_voxels;        // All voxels
+  std::vector<VoxelHit>                  m_voxelsHit;     // All voxels
+  std::vector<VoxelChunk>                m_TLAS;          // All TLAS Position
+  nvvk::Buffer                           m_voxelsBuffer;  // Buffer holding the voxels
+  nvvk::Buffer                           m_TLASBuffer;    // All voxel TLAS positions
+  //nvvk::Buffer                           m_voxelsHitBuffer;       // Buffer holding the voxels hit
+  nvvk::Buffer m_voxelsAabbBuffer;      // Buffer of all Aabb
+  nvvk::Buffer m_voxelsMatColorBuffer;  // Multiple materials
+  nvvk::Buffer m_voxelsMatIndexBuffer;  // Define which voxel uses which material
+
 
 protected:
   void createVoxels(uint32_t nbVoxels, uint8_t levels);
   //create TLAS number
   size_t TLAS_num = CHUNK_NUM * CHUNK_NUM + 1;
+
+
+  //VoxelHit*      voxelHitData;
+  VoxelChunk*    m_voxelChunks;
+  VkBuffer       m_stagingBuffer;
+  VkDeviceMemory m_stagingBufferMemory;
+  VkDeviceSize   m_stagingBufferSize;
+
+
+  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+  void createStagingBuffer(VkDeviceSize size, VkBuffer& stagingBuffer, VkDeviceMemory& stagingBufferMemory, void** data);
+  uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+  void     copyBuffer(const VkCommandBuffer& cmdBuf, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 };

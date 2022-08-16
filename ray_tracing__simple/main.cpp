@@ -218,6 +218,10 @@ int main(int argc, char** argv)
       ImGuiH::Panel::End();
     }
 
+
+    //Update ASes
+    helloVk.updateAS();
+
     // Start rendering the scene
     helloVk.prepareFrame();
 

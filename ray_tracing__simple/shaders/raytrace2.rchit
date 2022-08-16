@@ -43,12 +43,13 @@ layout(buffer_reference, scalar) buffer Materials {WaveFrontMaterial m[]; }; // 
 layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID for each triangle
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
+// layout(set = 0, binding = eVoxelsHit, scalar) buffer voxelsHit_ {VoxelHit i[];} voxelsHit;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 //layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
-layout(set = 1, binding = eImplicit, scalar) buffer allVoxels_ {Voxel i[];} allVoxels;
-layout(set = 1, binding = eImplicitTLAS, scalar) buffer allTLASPosition_
+layout(set = 0, binding = eImplicit, scalar) buffer allVoxels_ {Voxel i[];} allVoxels;
+layout(set = 0, binding = eImplicitTLAS, scalar) buffer allTLAS_
 {
-  vec3 allTLASPosition[];
+  VoxelChunk allTLAS[];
 };
 
 layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
@@ -65,10 +66,24 @@ void main()
   vec3 worldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
   Voxel instance = allVoxels.i[gl_PrimitiveID];
-  vec3 pos = allTLASPosition[gl_InstanceCustomIndexEXT];
+  VoxelChunk chunk = allTLAS[gl_InstanceCustomIndexEXT];
+  if(chunk.id == gl_InstanceCustomIndexEXT &&
+    chunk.level != gl_HitKindEXT)
+  {
+    chunk.level = gl_HitKindEXT;
+    allTLAS[gl_InstanceCustomIndexEXT] = chunk;
+  }
+
+  // VoxelHit currentVoxelHit;
+  // currentVoxelHit.level = gl_HitKindEXT;
+  // currentVoxelHit.instance = gl_InstanceCustomIndexEXT;
+  // currentVoxelHit.geometry = gl_GeometryIndexEXT;
+  // currentVoxelHit.id = gl_PrimitiveID;
+
+  // voxelsHit.i[(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.y) + gl_LaunchIDEXT.x] = currentVoxelHit;
 
   // Computing the normal at hit position
-  vec3 worldNrm = normalize(worldPos - (instance.center + pos));
+  vec3 worldNrm = normalize(worldPos - (instance.center + chunk.pos));
 
   // Computing the normal for a cube
   //if(gl_HitKindEXT == KIND_CUBE)  // Aabb
@@ -99,7 +114,8 @@ void main()
   // Material of the object
   // int               matIdx = matIndices.i[gl_PrimitiveID];
   // WaveFrontMaterial mat    = materials.m[matIdx];
-  WaveFrontMaterial mat    = materials.m[gl_HitKindEXT-1];
+  //WaveFrontMaterial mat    = materials.m[gl_HitKindEXT-1];
+  WaveFrontMaterial mat    = materials.m[0];
 
   // Diffuse
   vec3  diffuse     = computeDiffuse(mat, L, worldNrm);

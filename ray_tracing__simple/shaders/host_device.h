@@ -43,14 +43,15 @@ using uint = unsigned int;
 START_BINDING(SceneBindings)
   eGlobals  = 0,  // Global uniform containing camera matrices
   eObjDescs = 1,  // Access to the object descriptions
-  eTextures = 2,   // Access to textures
-  eImplicit = 3,   // All implicit objects
-  eImplicitTLAS = 4   // All implicit instances
+  eTextures = 2   // Access to textures
 END_BINDING();
 
 START_BINDING(RtxBindings)
   eTlas     = 0,  // Top-level acceleration structure
-  eOutImage = 1   // Ray tracer output image
+  eOutImage = 1,   // Ray tracer output image
+  eImplicitTLAS = 2,   // All implicit instances
+  eImplicit = 3   // All implicit objects
+  //eVoxelsHit = 2	// Ray tracer voxels hit
 END_BINDING();
 // clang-format on
 
@@ -128,6 +129,21 @@ struct Aabb
 {
   vec3 minimum;
   vec3 maximum;
+};
+
+struct VoxelHit
+{
+  uint id;
+  uint instance;
+  uint geometry;
+  uint  level;
+};
+
+struct VoxelChunk
+{
+  uint id;
+  uint level;
+  vec3 pos;
 };
 
 
